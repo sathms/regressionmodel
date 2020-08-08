@@ -1,0 +1,103 @@
+---
+title: "Motor Trend - Analysis"
+author: "Sath_MS"
+date: "08/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Summary 
+
+At Motor Trend magazine, we are interested in looking at a collection of cars and interested in exploring relationship between miles per gallon(mpg) and rest of the variables.
+
+In particular, we are interested in two questions:
+  -- Is an automatic or manual transmission better for MPG?
+  -- Quantify the mpg difference between automatic and manual transmissions.
+
+## Exploratory Analysis
+
+Lets do some preliminary analysis by plotting a correlation matrix.
+
+```{r explore}
+library(ggplot2)
+library(GGally)
+ggpairs(mtcars)
+```
+
+It appears there are a few variables displaying good correlation with mpg. So we can try constructing linear models to predict mpg.
+
+
+## Linear Modelling.
+
+First, we build a model with all the variables.
+
+```{r regmodel}
+model_all <- lm(mpg ~., data = mtcars)
+summary(model_all)
+```
+In the model (model_all), not all coefficients are significant, yet adjusted R Squared is high (0.806). We probably are overfitting with multicollinearity.
+
+## Is an automatic or manual transmission better for MPG?
+
+Now, to our object of our analysis to answer the question that is which is better for MPG, automatic or manual transmission?
+
+Here we build a model with only transmission(am) as the predictor variable.
+
+```{r}
+model_am <- lm(mpg ~ am, data = mtcars)
+summary(model_am)
+```
+In the transmission model (model_am), coefficient is significant from zero (i.e 7.24 mpg higher for manual than automatic), however the adjusted R squared is small (0.34) indicating that a transmission model has only a small explanatory power over mpg.
+
+## Model Stepwise selection
+
+Now, lets see if we can fit a better model than the prior models. Lets choose a model by AIC in a stepwise algorithm.
+
+```{r}
+#bestFit <- step(model_all, direction = "both", trace = TRUE)
+bestFit <- step(model_all, direction = "both", trace = FALSE)
+summary(bestFit)
+```
+In the ‘bestFit’ model mpg ~ wt + qsec + am, we see an R squared of 0.85.Also, we could conclude that (with a p < 0.05 confidence) cars with manual transmission have 2.9358 (say 3) more miles per gallon than automatic transmissions. 
+
+## Residual Dignostics
+
+Lets check if the residuals from our bestFit model are normally distributed using Shapiro-wilkins test (i.e if p > 0.05)
+
+```{r}
+shapiro.test(bestFit$res)
+```
+```{r}
+par(mfrow=c(2,2))
+plot(bestFit)
+```
+
+In the normal Q-Q (quantile vs quantile) plot:
+
+  A straight line on the QQ Plot tells us we have a normal distribution.
+  The uniform distribution has too many observations in both extremities (very high and very low values).
+  The exponential distribution has too many observations on the lower values, but too little in the higher values
+
+We can conclude that residuals in our bestfit model is normally distributed. 
+
+```{r}
+#signif(cooks.distance(bestFit),2)
+ls.diag(bestFit)
+```
+ 
+```{r}
+library(olsrr)
+# Influence
+ols_plot_dfbetas(bestFit)
+```
+ In general, large values of DFBETAS indicate observations that are influential in estimating a given parameter.
+ 
+References: https://cran.r-project.org/web/packages/olsrr/vignettes/influence_measures.html
+
+## Conclusions
+
+1. Holding all other paramters constant, manual transmission will increase your MPG.
+2. Based on the ‘bestFit’ model, we could conclude with a p < 0.05 confidence, cars with manual transmission have approx 3 more miles per gallon than automatic transmissions. 
